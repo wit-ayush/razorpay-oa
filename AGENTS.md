@@ -89,11 +89,26 @@ If a check fails, **fix the root cause** or stop and explain why you can't.
 ## Project-specific rules
 > Filled in for the current brief before any code, and updated when requirements change. These rules **override** the generic ones above where they conflict.
 
-- **Domain:** <!-- core entities and terms, e.g. "Expense = { id, amountMinor, currency, category, date }" -->
-- **Data source & mocking:** <!-- e.g. in-memory mock API in src/features/x/api with configurable delay/failure -->
-- **Domain rules:** <!-- e.g. money stored as integer minor units, dates as ISO yyyy-mm-dd, no float maths -->
-- **UI specifics:** <!-- e.g. filters reflected in the URL, optimistic updates or not -->
-- **Testing specifics:** <!-- e.g. fake timers for streams/polling, fixed "today" for date logic -->
+Current brief: **Payment Links manager**. Feature folder: `src/features/payment-links/`.
+
+- **Domain:** `PaymentLink = { id, amountPaise: number, description: string, customer: { email?: string; phone?: string }, expiresAt?: string (ISO), paidAt?: string (ISO), createdAt: string (ISO) }`. `LinkStatus = 'active' | 'paid' | 'expired'`. `StatusFilter = 'all' | LinkStatus`.
+- **Data source & mocking:** an in-memory mock API in `api/paymentLinksApi.ts` (`listLinks`, `createLink`, `markPaid`), async, with configurable latency and failure injection for error states. No persistence across reloads. Seed data includes Active, Paid and Expired links.
+- **Domain rules:**
+  - Money is **integer paise** everywhere. Parse the input string to paise with string arithmetic and never use float maths. Valid range: 1 paise up to 5,00,00,000 paise (₹5,00,000) inclusive, at most 2 decimals, digits and one optional `.` only. Display with `Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' })`.
+  - Description is trimmed, required, and at most 100 characters after trimming.
+  - Contact: at least one of email or phone. Phone is an Indian mobile number: 10 digits starting 6–9, with an optional `+91` prefix. If both are given, both must be valid.
+  - Expiry is optional, a local date and time, and must be strictly later than `now` at submit.
+  - **Status is derived, never stored**: `getStatus(link, now)`. If paid → `paid` (paid wins over expired). Else if `expiresAt <= now` → `expired`. Else `active`. Only active links can be marked paid.
+  - Validation and status functions take `now` as a parameter. No hidden `Date.now()` in `lib/`.
+- **UI specifics:**
+  - Validate on blur and on submit. On a failed submit, focus the first invalid field. Errors are linked with `aria-describedby`.
+  - Success is announced through `aria-live`. The form resets after a successful create, and the submit button is disabled while a request is pending.
+  - The list is sorted newest first. Filter tabs show counts. A clock tick every 30s re-derives statuses.
+  - Table at ≥640px, stacked cards below. Each status filter has its own empty state, and loading has an error-with-retry state.
+- **Testing specifics:**
+  - Pure-function tests for amount parsing (boundaries: 0, 0.01, 0.001, 500000, 500000.01, "1.", "abc", "1,000"), the description limit (100 vs 101, whitespace-only), email and phone formats, expiry (past, now, future) and `getStatus` (paid+expired, expiry == now).
+  - Use `vi.useFakeTimers()` / `vi.setSystemTime` for anything time-based.
+  - The E2E covers create → appears as Active → filter.
 
 ## When requirements change
 Update the plan in `docs/plans/` first (acceptance criteria, units and a dated change note), and update *Project-specific rules* above if conventions change. Then add failing tests for the new rule and its edge cases, then implement. Extend the existing code; **don't start over**.
