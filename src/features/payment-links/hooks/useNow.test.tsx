@@ -29,13 +29,15 @@ describe('live expiry', () => {
     const link: PaymentLink = {
       id: 'l1',
       amountPaise: 1000,
+      amountPaidPaise: 0,
+      allowPartial: false,
       description: 'Short-lived link',
       customer: { email: 'a@b.co' },
       expiresAt: '2026-11-12T10:00:10.000Z',
       createdAt: START.toISOString(),
     }
     function Harness() {
-      return <LinksList links={[link]} now={useNow(30_000)} onMarkPaid={() => {}} />
+      return <LinksList links={[link]} now={useNow(30_000)} onRecordPayment={async () => {}} />
     }
     render(<Harness />)
     expect(screen.getByText('Active')).toBeInTheDocument()
@@ -44,6 +46,6 @@ describe('live expiry', () => {
       vi.advanceTimersByTime(30_000)
     })
     expect(screen.getByText('Expired')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Mark as paid/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Record payment' })).not.toBeInTheDocument()
   })
 })

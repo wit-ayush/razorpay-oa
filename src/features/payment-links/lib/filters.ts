@@ -3,6 +3,7 @@ import type { StatusFilter } from '../types'
 export const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
+  { value: 'partially_paid', label: 'Partially paid' },
   { value: 'paid', label: 'Paid' },
   { value: 'expired', label: 'Expired' },
 ]

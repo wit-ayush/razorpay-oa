@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { PaymentLinksApi } from '../api/paymentLinksApi'
 import { useNow } from '../hooks/useNow'
-import { toMessage, usePaymentLinks } from '../hooks/usePaymentLinks'
+import { usePaymentLinks } from '../hooks/usePaymentLinks'
 import { countByStatus, filterLinks, sortNewestFirst } from '../lib/status'
 import type { StatusFilter } from '../types'
 import { CreateLinkForm } from './CreateLinkForm'
@@ -15,19 +15,9 @@ interface PaymentLinksPageProps {
 }
 
 export function PaymentLinksPage({ api, getNow }: PaymentLinksPageProps) {
-  const { state, retry, createLink, markPaid } = usePaymentLinks(api)
+  const { state, retry, createLink, recordPayment } = usePaymentLinks(api)
   const now = useNow()
   const [filter, setFilter] = useState<StatusFilter>('all')
-  const [actionError, setActionError] = useState<string>()
-
-  async function handleMarkPaid(id: string) {
-    setActionError(undefined)
-    try {
-      await markPaid(id)
-    } catch (error) {
-      setActionError(`Could not mark the link as paid: ${toMessage(error)}`)
-    }
-  }
 
   return (
     <main>
@@ -55,12 +45,7 @@ export function PaymentLinksPage({ api, getNow }: PaymentLinksPageProps) {
         {state.status === 'success' && (
           <>
             <StatusFilterBar value={filter} counts={countByStatus(state.links, now)} onChange={setFilter} />
-            {actionError && (
-              <p role="alert" className="field__error">
-                {actionError}
-              </p>
-            )}
-            <LinkResults links={sortNewestFirst(filterLinks(state.links, filter, now))} filter={filter} now={now} onMarkPaid={handleMarkPaid} />
+            <LinkResults links={sortNewestFirst(filterLinks(state.links, filter, now))} filter={filter} now={now} onRecordPayment={recordPayment} />
           </>
         )}
       </section>
@@ -72,13 +57,13 @@ function LinkResults({
   links,
   filter,
   now,
-  onMarkPaid,
+  onRecordPayment,
 }: {
   links: Parameters<typeof LinksList>[0]['links']
   filter: StatusFilter
   now: Date
-  onMarkPaid: (id: string) => void
+  onRecordPayment: (id: string, amountPaise: number) => Promise<void>
 }) {
-  if (links.length > 0) return <LinksList links={links} now={now} onMarkPaid={onMarkPaid} />
+  if (links.length > 0) return <LinksList links={links} now={now} onRecordPayment={onRecordPayment} />
   return <p className="empty-state">{emptyStateMessage(filter)}</p>
 }

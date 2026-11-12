@@ -44,9 +44,10 @@ export function usePaymentLinks(api: PaymentLinksApi) {
     [api],
   )
 
-  const markPaid = useCallback(
-    async (id: string) => {
-      const updated = await api.markPaid(id)
+  /** Throws on failure so the payment form can show the error inline. */
+  const recordPayment = useCallback(
+    async (id: string, amountPaise: number) => {
+      const updated = await api.recordPayment(id, amountPaise)
       setState((current) =>
         current.status === 'success'
           ? { ...current, links: current.links.map((link) => (link.id === id ? updated : link)) }
@@ -56,7 +57,7 @@ export function usePaymentLinks(api: PaymentLinksApi) {
     [api],
   )
 
-  return { state, retry, createLink, markPaid }
+  return { state, retry, createLink, recordPayment }
 }
 
 export { toMessage }

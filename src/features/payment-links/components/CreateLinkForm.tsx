@@ -16,7 +16,15 @@ type SubmitState =
   | { status: 'success'; message: string }
   | { status: 'error'; message: string }
 
-const EMPTY: LinkFormValues = { amount: '', description: '', email: '', phone: '', expiresAt: '' }
+const EMPTY: LinkFormValues = {
+  amount: '',
+  description: '',
+  email: '',
+  phone: '',
+  expiresAt: '',
+  allowPartial: false,
+  minFirstPayment: '',
+}
 const defaultNow = () => new Date()
 
 export function CreateLinkForm({ onCreate, getNow = defaultNow }: CreateLinkFormProps) {
@@ -27,6 +35,7 @@ export function CreateLinkForm({ onCreate, getNow = defaultNow }: CreateLinkForm
 
   const refs: Record<LinkFormField, RefObject<HTMLInputElement | null>> = {
     amount: useRef<HTMLInputElement>(null),
+    minFirstPayment: useRef<HTMLInputElement>(null),
     description: useRef<HTMLInputElement>(null),
     email: useRef<HTMLInputElement>(null),
     phone: useRef<HTMLInputElement>(null),
@@ -81,6 +90,22 @@ export function CreateLinkForm({ onCreate, getNow = defaultNow }: CreateLinkForm
       <Field label="Amount (₹)" field="amount" error={errorFor('amount')}>
         <input {...fieldProps('amount', errorFor('amount'))} inputMode="decimal" autoComplete="off" placeholder="1499.50" />
       </Field>
+
+      <div className="field field--checkbox">
+        <input
+          id="link-allowPartial"
+          type="checkbox"
+          checked={values.allowPartial}
+          onChange={(event) => setValues((current) => ({ ...current, allowPartial: event.target.checked }))}
+        />
+        <label htmlFor="link-allowPartial">Allow partial payments</label>
+      </div>
+
+      {values.allowPartial && (
+        <Field label="Minimum first payment (₹)" field="minFirstPayment" error={errorFor('minFirstPayment')}>
+          <input {...fieldProps('minFirstPayment', errorFor('minFirstPayment'))} inputMode="decimal" autoComplete="off" />
+        </Field>
+      )}
 
       <Field label="Description" field="description" error={errorFor('description')}>
         <input {...fieldProps('description', errorFor('description'), 'link-description-count')} autoComplete="off" />

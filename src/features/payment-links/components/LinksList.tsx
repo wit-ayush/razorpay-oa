@@ -1,21 +1,28 @@
 import { formatINR } from '../lib/amount'
-import { getStatus } from '../lib/status'
+import { amountDuePaise, getStatus } from '../lib/status'
 import type { LinkStatus, PaymentLink } from '../types'
+import { RecordPaymentForm } from './RecordPaymentForm'
 
-const STATUS_LABEL: Record<LinkStatus, string> = { active: 'Active', paid: 'Paid', expired: 'Expired' }
+const STATUS_LABEL: Record<LinkStatus, string> = {
+  active: 'Active',
+  partially_paid: 'Partially paid',
+  paid: 'Paid',
+  expired: 'Expired',
+}
 const dateTime = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
 
 interface LinksListProps {
   links: PaymentLink[]
   now: Date
-  onMarkPaid: (id: string) => void
+  onRecordPayment: (id: string, amountPaise: number) => Promise<void>
 }
 
-export function LinksList({ links, now, onMarkPaid }: LinksListProps) {
+export function LinksList({ links, now, onRecordPayment }: LinksListProps) {
   return (
     <ul className="links" aria-label="Payment links">
       {links.map((link) => {
         const status = getStatus(link, now)
+        const canPay = status === 'active' || status === 'partially_paid'
         return (
           <li key={link.id} className="link-card">
             <div className="link-card__head">
@@ -23,6 +30,9 @@ export function LinksList({ links, now, onMarkPaid }: LinksListProps) {
               <span className={`badge badge--${status}`}>{STATUS_LABEL[status]}</span>
             </div>
             <p className="link-card__description">{link.description}</p>
+            <p className="link-card__progress">
+              Paid {formatINR(link.amountPaidPaise)} / Due {formatINR(amountDuePaise(link))}
+            </p>
             <dl className="link-card__meta">
               <div>
                 <dt>Customer</dt>
@@ -41,11 +51,7 @@ export function LinksList({ links, now, onMarkPaid }: LinksListProps) {
                 </dd>
               </div>
             </dl>
-            {status === 'active' && (
-              <button type="button" className="link-card__action" onClick={() => onMarkPaid(link.id)} aria-label={`Mark as paid: ${link.description}`}>
-                Mark as paid
-              </button>
-            )}
+            {canPay && <RecordPaymentForm link={link} now={now} onRecordPayment={onRecordPayment} />}
           </li>
         )
       })}

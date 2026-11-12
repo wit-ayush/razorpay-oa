@@ -1,4 +1,4 @@
-export type LinkStatus = 'active' | 'paid' | 'expired'
+export type LinkStatus = 'active' | 'partially_paid' | 'paid' | 'expired'
 export type StatusFilter = 'all' | LinkStatus
 
 export interface Customer {
@@ -10,12 +10,15 @@ export interface PaymentLink {
   id: string
   /** Amount in integer paise (₹1 = 100 paise). Never a float. */
   amountPaise: number
+  /** Total recorded payments in integer paise. Paid in full when equal to amountPaise. */
+  amountPaidPaise: number
+  allowPartial: boolean
+  /** Only meaningful when allowPartial is true. */
+  minFirstPaymentPaise?: number
   description: string
   customer: Customer
   /** ISO timestamp; absent means the link never expires. */
   expiresAt?: string
-  /** ISO timestamp; present means the link has been paid. */
-  paidAt?: string
   createdAt: string
 }
 
@@ -27,9 +30,12 @@ export interface LinkFormValues {
   phone: string
   /** `datetime-local` value (YYYY-MM-DDTHH:mm, local time) or ''. */
   expiresAt: string
+  allowPartial: boolean
+  minFirstPayment: string
 }
 
-export type LinkFormField = keyof LinkFormValues
+/** Text inputs of the form (the checkbox is handled separately). */
+export type LinkFormField = Exclude<keyof LinkFormValues, 'allowPartial'>
 /** `customer` is the "at least one of email/phone" group error. */
 export type LinkFormErrors = Partial<Record<LinkFormField | 'customer', string>>
 
@@ -39,4 +45,6 @@ export interface NewLinkInput {
   description: string
   customer: Customer
   expiresAt?: string
+  allowPartial: boolean
+  minFirstPaymentPaise?: number
 }

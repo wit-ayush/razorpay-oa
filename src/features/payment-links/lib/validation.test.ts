@@ -10,6 +10,8 @@ const valid: LinkFormValues = {
   email: 'buyer@example.com',
   phone: '',
   expiresAt: '',
+  allowPartial: false,
+  minFirstPayment: '',
 }
 
 const errorsFor = (overrides: Partial<LinkFormValues>) => {
@@ -28,6 +30,8 @@ describe('validateLinkForm', () => {
         description: 'Invoice #42',
         customer: { email: 'buyer@example.com', phone: '+919876543210' },
         expiresAt: undefined,
+        allowPartial: false,
+        minFirstPaymentPaise: undefined,
       },
     })
   })
@@ -108,9 +112,37 @@ describe('validateLinkForm', () => {
   })
 })
 
+describe('minimum first payment (AC-13)', () => {
+  const partial = (minFirstPayment: string, amount = '1000') => errorsFor({ allowPartial: true, minFirstPayment, amount })
+
+  it('is required when partial payments are allowed', () => {
+    expect(partial('').minFirstPayment).toBe('Minimum first payment is required')
+  })
+
+  it('must be > 0 with at most 2 decimals', () => {
+    expect(partial('0').minFirstPayment).toBe('Minimum first payment must be greater than ₹0')
+    expect(partial('10.001').minFirstPayment).toBe('Minimum first payment can have at most 2 decimal places')
+  })
+
+  it('may equal the amount but not exceed it', () => {
+    expect(partial('1000').minFirstPayment).toBeUndefined()
+    expect(partial('1000.01').minFirstPayment).toBe('Minimum first payment cannot exceed the amount')
+  })
+
+  it('is ignored when partial payments are not allowed', () => {
+    expect(errorsFor({ allowPartial: false, minFirstPayment: '99999999' }).minFirstPayment).toBeUndefined()
+  })
+
+  it('is converted to paise in the output', () => {
+    const result = validateLinkForm({ ...valid, allowPartial: true, minFirstPayment: '200.50' }, NOW)
+    expect(result.ok && result.value).toMatchObject({ allowPartial: true, minFirstPaymentPaise: 20050 })
+  })
+})
+
 describe('firstInvalidField', () => {
   it('follows form order and maps the customer group error to the email field', () => {
     expect(firstInvalidField({ expiresAt: 'x', description: 'x' })).toBe('description')
+    expect(firstInvalidField({ minFirstPayment: 'x', description: 'x' })).toBe('minFirstPayment')
     expect(firstInvalidField({ customer: 'x', expiresAt: 'x' })).toBe('email')
     expect(firstInvalidField({})).toBeUndefined()
   })

@@ -31,6 +31,14 @@ export function validateLinkForm(values: LinkFormValues, now: Date): ValidationR
   if (email !== '' && !EMAIL.test(email)) errors.email = 'Enter a valid email address'
   if (phone !== '' && !INDIAN_MOBILE.test(phone)) errors.phone = 'Enter a valid 10-digit Indian mobile number'
 
+  let minFirstPaymentPaise: number | undefined
+  if (values.allowPartial) {
+    const min = parseAmountToPaise(values.minFirstPayment)
+    if (!min.ok) errors.minFirstPayment = min.error.replace(/^Amount/, 'Minimum first payment')
+    else if (amount.ok && min.paise > amount.paise) errors.minFirstPayment = 'Minimum first payment cannot exceed the amount'
+    else minFirstPaymentPaise = min.paise
+  }
+
   let expiresAt: string | undefined
   if (values.expiresAt.trim() !== '') {
     const expiry = new Date(values.expiresAt)
@@ -48,11 +56,13 @@ export function validateLinkForm(values: LinkFormValues, now: Date): ValidationR
       description,
       customer: { ...(email && { email }), ...(phone && { phone }) },
       expiresAt,
+      allowPartial: values.allowPartial,
+      minFirstPaymentPaise,
     },
   }
 }
 
-const FIELD_ORDER: LinkFormField[] = ['amount', 'description', 'email', 'phone', 'expiresAt']
+const FIELD_ORDER: LinkFormField[] = ['amount', 'minFirstPayment', 'description', 'email', 'phone', 'expiresAt']
 
 /** The field that should receive focus after a failed submit (form order). */
 export function firstInvalidField(errors: LinkFormErrors): LinkFormField | undefined {
