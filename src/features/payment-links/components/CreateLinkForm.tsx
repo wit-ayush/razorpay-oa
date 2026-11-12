@@ -1,4 +1,4 @@
-import { useRef, useState, type SubmitEvent, type ReactNode, type RefObject } from 'react'
+import { useRef, useState, type FocusEvent, type SubmitEvent, type ReactNode, type RefObject } from 'react'
 import { toMessage } from '../hooks/usePaymentLinks'
 import { formatINR } from '../lib/amount'
 import { DESCRIPTION_MAX, firstInvalidField, validateLinkForm } from '../lib/validation'
@@ -80,7 +80,13 @@ export function CreateLinkForm({ onCreate, getNow = defaultNow }: CreateLinkForm
     ref: refs[field],
     value: values[field],
     onChange: (event: { target: { value: string } }) => update(field, event.target.value),
-    onBlur: () => markTouched(field),
+    onBlur: (event: FocusEvent<HTMLInputElement>) => {
+      // Moving focus to Submit validates everything anyway. Showing the blur error first would shift
+      // the layout under the pointer and swallow the click.
+      const next = event.relatedTarget
+      if (next instanceof HTMLButtonElement && next.type === 'submit') return
+      markTouched(field)
+    },
     'aria-invalid': error ? true : undefined,
     'aria-describedby': [error ? `link-${field}-error` : undefined, extraDescribedBy].filter(Boolean).join(' ') || undefined,
   })
