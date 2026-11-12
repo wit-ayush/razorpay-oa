@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react'
+import { useRef, useState, type SubmitEvent, type ReactNode, type RefObject } from 'react'
 import { toMessage } from '../hooks/usePaymentLinks'
 import { formatINR } from '../lib/amount'
 import { DESCRIPTION_MAX, firstInvalidField, validateLinkForm } from '../lib/validation'
@@ -42,7 +42,7 @@ export function CreateLinkForm({ onCreate, getNow = defaultNow }: CreateLinkForm
   const update = (field: LinkFormField, value: string) => setValues((current) => ({ ...current, [field]: value }))
   const markTouched = (field: LinkFormField) => setTouched((current) => ({ ...current, [field]: true }))
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitted(true)
     const result = validateLinkForm(values, getNow())
