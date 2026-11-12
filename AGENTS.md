@@ -91,14 +91,15 @@ If a check fails, **fix the root cause** or stop and explain why you can't.
 
 Current brief: **Payment Links manager**. Feature folder: `src/features/payment-links/`.
 
-- **Domain:** `PaymentLink = { id, amountPaise: number, description: string, customer: { email?: string; phone?: string }, expiresAt?: string (ISO), paidAt?: string (ISO), createdAt: string (ISO) }`. `LinkStatus = 'active' | 'paid' | 'expired'`. `StatusFilter = 'all' | LinkStatus`.
-- **Data source & mocking:** an in-memory mock API in `api/paymentLinksApi.ts` (`listLinks`, `createLink`, `markPaid`), async, with configurable latency and failure injection for error states. No persistence across reloads. Seed data includes Active, Paid and Expired links.
+- **Domain (updated for partial payments):** `PaymentLink = { id, amountPaise, amountPaidPaise, allowPartial: boolean, minFirstPaymentPaise?: number, description, customer: { email?, phone? }, expiresAt?: ISO, createdAt: ISO }`. `LinkStatus = 'active' | 'partially_paid' | 'paid' | 'expired'`. `StatusFilter = 'all' | LinkStatus`. Amount due = `amountPaise - amountPaidPaise`.
+- **Data source & persistence:** the mock API in `api/paymentLinksApi.ts` (`listLinks`, `createLink`, `recordPayment`) is async, with latency and failure injection. **It persists to `localStorage` (key `payment-links:v1`)** behind the API interface, so UI and hooks never touch storage. Stored data is validated on read; corrupt or invalid data falls back to seed. Seed data includes Active, Partially paid, Paid and Expired links.
+- **Payment rules:** payments must be > 0, ≤ 2 decimals and ≤ amount due, and only on Active or Partially paid links. With partial payments off, a payment must equal the full due. With partial payments on, the first payment must be ≥ the minimum first payment unless it clears the full due. The minimum first payment is > 0 and ≤ amount. The same rule function is used by both the UI and the API.
 - **Domain rules:**
   - Money is **integer paise** everywhere. Parse the input string to paise with string arithmetic and never use float maths. Valid range: 1 paise up to 5,00,00,000 paise (₹5,00,000) inclusive, at most 2 decimals, digits and one optional `.` only. Display with `Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' })`.
   - Description is trimmed, required, and at most 100 characters after trimming.
   - Contact: at least one of email or phone. Phone is an Indian mobile number: 10 digits starting 6–9, with an optional `+91` prefix. If both are given, both must be valid.
   - Expiry is optional, a local date and time, and must be strictly later than `now` at submit.
-  - **Status is derived, never stored**: `getStatus(link, now)`. If paid → `paid` (paid wins over expired). Else if `expiresAt <= now` → `expired`. Else `active`. Only active links can be marked paid.
+  - **Status is derived, never stored**: `getStatus(link, now)`. Precedence: paid in full → `paid` (never expires). Else `expiresAt <= now` → `expired` (beats active and partially paid). Else paid > 0 → `partially_paid`. Else `active`.
   - Validation and status functions take `now` as a parameter. No hidden `Date.now()` in `lib/`.
 - **UI specifics:**
   - Validate on blur and on submit. On a failed submit, focus the first invalid field. Errors are linked with `aria-describedby`.

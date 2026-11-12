@@ -70,3 +70,32 @@ A unit is done only when **all** of the following are true:
 
 **Why this order:** the business rules (money, validation, status) carry the risk, so they go first as pure, fully tested functions with `now` injected, where the tests are cheap and deterministic. Then the data layer, then a thin UI on top, then the E2E for the end-to-end proof. Each unit is one concern touching about 5 files or fewer.
 **Checkpoints:** after each unit I read the diff, run `/ce-code-review`, run the checks, commit, and push. I also commit and push at the end of every OA section.
+
+---
+
+## Change note (2026-11-12): partial payments + persistence
+
+**New requirement:** "Allow partial payments" with a "Minimum first payment"; each link tracks the amount paid; a "Record payment" action; statuses Active / Partially paid / Paid / Expired; list shows paid / due; filter gains "Partially paid"; links survive a reload.
+
+**Assumptions (my decisions on the gaps)**
+- With partial payments OFF, a recorded payment must equal the full amount due.
+- With partial payments ON, the first payment must be ≥ the minimum first payment unless it clears the full amount. Later payments can be any amount > 0 and ≤ due.
+- Paid is derived (`amountPaidPaise === amountPaise`), never stored as a flag.
+- Persistence: localStorage behind the existing API interface, validated on read. Corrupt or invalid data falls back to seed data.
+- "Mark as paid" is replaced by "Record payment". Paying the full due amount gives the same result.
+
+**New / changed acceptance criteria**
+- **AC-13 Partial option:** the "Allow partial payments" checkbox reveals "Minimum first payment (₹)": required when ticked, same money rules as amount (> 0, ≤ 2 decimals), and **≤ amount**. Ignored when unticked.
+- **AC-14 Record payment:** only on Active and Partially paid links. The amount must be > 0, ≤ 2 decimals and **≤ amount due**. Partial rules as in the assumptions. Clear inline errors.
+- **AC-15 Status precedence (replaces AC-7):** paid in full → **Paid** (never expires); else expiry ≤ now → **Expired** (beats Active and Partially paid); else paid > 0 → **Partially paid**; else **Active**.
+- **AC-16 Money:** all totals are integer paise. ₹0.10 + ₹0.20 on a ₹0.30 link gives exactly Paid with ₹0.00 due.
+- **AC-17 List & filter:** each link shows "Paid ₹x / Due ₹y". The filter gains "Partially paid (n)" (replaces part of AC-8 and AC-9).
+- **AC-18 Persistence:** links and payments survive a page reload. Corrupt storage doesn't crash the app.
+
+**New units**
+| Unit | Scope | ACs |
+|---|---|---|
+| U6 | Types, status precedence, `validateRecordPayment`, min-first-payment validation. **Tests first** | 13–16 |
+| U7 | API `recordPayment` + localStorage persistence (validated read, fallback) + tests | 14, 18 |
+| U8 | UI: checkbox + min field, per-link Record payment, paid/due, new filter + RTL tests | 13, 14, 17 |
+| U9 | E2E: partial payment → Partially paid → reload → pay the rest → Paid; full gate | all |
