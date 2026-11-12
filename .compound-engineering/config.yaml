@@ -1,0 +1,5 @@
+# Compound Engineering (EveryInc plugin) - repo config, committed so the setup is reproducible.
+# Plans are written to docs/plans/ (default docs_root).
+plan_output: md                # plans as markdown, readable on GitHub
+cross_model_review_mode: off   # keep reviews in-session: no code sent to a second model, faster
+work_engine_mode: off          # ce-work runs natively in Claude Code

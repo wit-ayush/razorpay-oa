@@ -1,0 +1,3 @@
+# local agent settings & artifacts
+.claude/settings.local.json
+.compound-engineering/config.local.yaml
